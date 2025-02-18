@@ -1,0 +1,47 @@
+{
+    "title": "VMware Data Center CPU Contention",
+    "description": "This experiment simulates CPU resource contention in a VMware virtualized environment.",
+    "tags": [],
+    "steady-state-hypothesis": {
+        "title": "CPU resource contention to remain within 20%.",
+        "probes": [
+            {
+                "type": "probe",
+                "name": "cpu-usage-baseline",
+                "tolerance": {
+                    "percentage": 20
+                },
+                "provider": {
+                    "type": "python",
+                    "module": "vmware_module",
+                    "func": "get_cpu_usage_baseline",
+                    "arguments": {
+                        "baseline": 40
+                    }
+                }
+            }
+        ]
+    },
+    "method": [
+        {
+            "type": "action",
+            "name": "introduce-cpu-contention",
+            "provider": {
+                "type": "python",
+                "module": "vmware_module",
+                "func": "introduce_cpu_contention"
+            }
+        }
+    ],
+    "rollbacks": [
+        {
+            "type": "action",
+            "name": "remove-cpu-contention",
+            "provider": {
+                "type": "python",
+                "module": "vmware_module",
+                "func": "remove_cpu_contention"
+            }
+        }
+    ]
+}

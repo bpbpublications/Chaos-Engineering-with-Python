@@ -1,0 +1,59 @@
+{
+  "version": "1.0.0",
+  "title": "Kubernetes Chaos Experiment",
+  "description": "An experiment to test the resilience of the Online Boutique application",
+  "tags": ["kubernetes", "chaos"],
+  "steady-state-hypothesis": {
+    "title": "Application is healthy",
+    "probes": [
+      {
+        "type": "probe",
+        "name": "check_frontend_healthy",
+        "tolerance": true,
+        "provider": {
+          "type": "python",
+          "module": "chaosk8s.deployment.probes",  
+          "func": "deployment_partially_available",
+          "arguments": {
+            "name": "frontend",
+            "label_selector": "app=frontend"
+          }
+        }
+      }
+    ]
+  },
+  "method": [
+    {
+      "type": "action",
+      "name": "terminate_frontend_pod",
+      "provider": {
+        "type": "python",
+        "module": "chaosk8s.pod.actions",
+        "func": "terminate_pods",
+        "arguments": {
+          "label_selector": "app=frontend",
+          "name_pattern": "frontend-.*",
+          "rand": true
+        }
+      },
+      "pauses": {
+        "after": 10
+      }      
+    }
+  ],
+  "rollbacks": [
+    {
+      "type": "action",
+      "name": "rollback_terminate_frontend_pod",
+      "provider": {
+        "type": "python",
+        "module": "chaosk8s.pod.actions",
+        "func": "terminate_pods",
+        "arguments": {
+          "label_selector": "app=frontend",
+          "name_pattern": "frontend-.*"
+        }
+      }
+    }
+  ]
+}

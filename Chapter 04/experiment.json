@@ -1,0 +1,43 @@
+{
+    "title": "Chaos Toolkit Experiment",
+    "description": "This experiment simulates unavailability of the Products database",
+    "tags": [],
+    "steady-state-hypothesis": {
+        "title": "App continues to list products even if the database is unavailable",
+        "probes": [
+            {
+                "type": "probe",
+                "name": "availability",
+                "tolerance": 200,
+                "provider": {
+                    "type": "http",
+                    "timeout": 3,
+                    "verify_tls": false,
+                    "url": "http://localhost:5000/products"
+                }
+            }
+        ]
+    },
+    "method": [
+    {
+        "type": "action",
+        "name": "kill_db",
+        "provider": {
+            "type": "process",
+            "path": "mv",
+            "arguments": "products.yaml new-products.yaml"
+        }
+    }
+  ],
+  "rollbacks": [
+    {
+        "type": "action",
+        "name": "restore_db",
+        "provider": {
+            "type": "process",
+            "path": "mv",
+            "arguments": "new-products.yaml products.yaml"
+        }
+    }    
+  ]
+}

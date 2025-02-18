@@ -1,0 +1,74 @@
+{
+    "version": "1.0.0",
+    "title": "Simulate CPU Stress on Kubernetes Pod",
+    "description": "This experiment tests the application's resilience by stressing CPU resources on a Kubernetes pod.",
+    "tags": ["kubernetes", "resilience", "cpu-stress"],
+    "steady-state-hypothesis": {
+      "title": "Application remains functional under CPU stress",
+      "probes": [
+        {
+          "type": "probe",
+          "name": "pod-is-running",
+          "provider": {
+            "type": "python",
+            "module": "chaosk8s.pod.probes",
+            "func": "read_pod_status",
+            "arguments": {
+              "name": "my-app-pod",
+              "namespace": "default"
+            }
+          },
+          "tolerance": {
+            "type": "equal",
+            "value": "Running"
+          }
+        },
+        {
+          "type": "probe",
+          "name": "app-health-check",
+          "provider": {
+            "type": "http",
+            "url": "http://localhost:8000/app/health",
+            "method": "GET"
+          },
+          "tolerance": {
+            "type": "less_than",
+            "value": 200
+          }
+        }
+      ]
+    },
+    "method": [
+      {
+        "type": "action",
+        "name": "inject-cpu-stress",
+        "provider": {
+          "type": "python",
+          "module": "chaosk8s.pod.actions",
+          "func": "exec_in_pod",
+          "arguments": {
+            "name": "my-app-pod",
+            "namespace": "default",
+            "container": "app-container",
+            "command": ["stress", "--cpu", "4", "--timeout", "60"]
+          }
+        }
+      }
+    ],
+    "rollbacks": [
+      {
+        "type": "action",
+        "name": "recover-pod",
+        "provider": {
+          "type": "python",
+          "module": "chaosk8s.pod.actions",
+          "func": "delete_pod",
+          "arguments": {
+            "name": "my-app-pod",
+            "namespace": "default"
+          }
+        }
+      }
+    ]
+  }
+  

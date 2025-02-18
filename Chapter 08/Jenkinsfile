@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+    environment {
+        CHAOS_TOOLKIT_HOME = "/usr/local/bin"
+        KUBECONFIG = "/path/to/kubeconfig"
+    }
+    stages {
+        stage('Setup Environment') {
+            steps {
+                echo 'Setting up Kubernetes cluster and application...'
+                sh 'kubectl apply -f deployment.yaml'
+            }
+        }
+        stage('Run Chaos Experiment') {
+            steps {
+                echo 'Running CPU stress experiment...'
+                sh '''
+                export KUBECONFIG=${KUBECONFIG}
+                chaos run chaos_experiment.json
+                '''
+            }
+        }
+        stage('Analyze Results') {
+            steps {
+                echo 'Analyzing experiment results...'
+                sh '''
+                # Define variables for logs and metrics locations
+                LOG_DIR=/var/logs/chaos
+                METRICS_FILE=/var/metrics/experiment_metrics.json
+
+                # Ensure the logs directory exists
+                if [ ! -d "$LOG_DIR" ]; then
+                    echo "Log directory does not exist: $LOG_DIR"
+                    exit 1
+                fi
+
+                # Print recent logs
+                echo "Displaying recent logs from the chaos experiment:"
+                tail -n 50 $LOG_DIR/experiment.log || echo "No logs found"
+
+                # Check for metrics file and validate results
+                if [ -f "$METRICS_FILE" ]; then
+                    echo "Analyzing metrics from: $METRICS_FILE"
+                    # Example of checking for specific metrics
+                    RESPONSE_TIME=$(jq '.response_time' $METRICS_FILE)
+                    STATUS=$(jq '.status' $METRICS_FILE)
+
+                    echo "Response Time: $RESPONSE_TIME ms"
+                    echo "Application Status: $STATUS"
+
+                    if (( $(echo "$RESPONSE_TIME > 200" | bc -l) )); then
+                        echo "WARNING: Response time exceeds acceptable limits!"
+                        exit 1
+                    fi
+
+                    if [ "$STATUS" != "healthy" ]; then
+                        echo "ERROR: Application is not healthy!"
+                        exit 1
+                    fi
+                else
+                    echo "Metrics file not found: $METRICS_FILE"
+                    exit 1
+                fi
+
+                echo "Chaos experiment analysis completed successfully."
+                '''
+            }
+        }
+        stage('Cleanup') {
+            steps {
+                echo 'Cleaning up resources...'
+                sh '''
+                kubectl delete namespace chaos-testing || true
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+        failure {
+            echo 'Pipeline failed. Investigate the issues.'
+        }
+    }
+}
